@@ -1,3 +1,5 @@
+var should_exit = std.atomic.Atomic(bool).init(false); // Add input checker to exit the program
+
 const Logger = struct {
     out: std.io.GenericWriter(
         std.fs.File,
@@ -10,36 +12,52 @@ const Logger = struct {
         std.fs.File.write,
     ),
 };
+
 const TimeFormat = struct {
-    hours: u32,
-    minutes: u32,
-    seconds: u32,
+    hours: u32 = 0,
+    minutes: u32 = 0,
+    seconds: u32 = 0,
 
     /// Input must consist of only numbers and colon symbols
     /// Any other symbols invalidate this parsing step and result in an error
-    pub fn parse(s: []const u8) !TimeFormat {
+    pub fn parse(allocator: std.mem.Allocator, s: []const u8) !TimeFormat {
         // Assumes valid format for time format
-        var time_iter = std.mem.splitScalar(u8, s, ':');
-        var time_count: u32 = 0;
-
-        var tmp: [3]u32 = .{ 0, 0, 0 };
-
-        while (time_iter.next()) |time_val| {
-            const time_int = try std.fmt.parseInt(u32, time_val, 10);
-            tmp[time_count] = time_int;
-            time_count += 1;
+        var iter = std.mem.splitScalar(u8, s, ':');
+        const time_vals = try utils.collect(allocator, []const u8, &iter);
+        defer allocator.free(time_vals);
+        if (time_vals.len < 1 or time_vals.len > 3) {
+            std.log.err("Invalid format for duration of time block", .{});
+            return error.InvalidTimeFormat;
         }
+        // Receive the time format in reverse order and fill in seconds, then minutes, then hours
+        // Err if number of args is greater than 3 or less than 1
 
-        const formatted = TimeFormat{
-            .hours = tmp[0],
-            .minutes = tmp[1],
-            .seconds = tmp[2],
-        };
+        var formatted = TimeFormat{};
+        setTimeFormat: switch (time_vals.len) {
+            1 => {
+                const seconds_int = try std.fmt.parseInt(u32, time_vals[0], 10);
+                formatted.seconds = seconds_int;
+            },
+            2 => {
+                const minutes_int = try std.fmt.parseInt(u32, time_vals[0], 10);
+                formatted.minutes = minutes_int;
+                continue :setTimeFormat 1;
+            },
+            3 => {
+                const hours_int = try std.fmt.parseInt(u32, time_vals[0], 10);
+                formatted.hours = hours_int;
+                continue :setTimeFormat 2;
+            },
+            else => {},
+        }
 
         return formatted;
     }
     fn toNanoseconds(self: TimeFormat) u64 {
         return std.time.ns_per_hour * self.hours + std.time.ns_per_min * self.minutes + std.time.ns_per_s * self.seconds;
+    }
+    fn toSeconds(self: TimeFormat) u64 {
+        return std.time.s_per_hour * self.hours + std.time.s_per_min * self.minutes + self.seconds;
     }
     pub fn format(
         self: TimeFormat,
@@ -79,8 +97,8 @@ const Schedule = struct {
                     const first = args[i_offset + 1];
                     const second = args[i_offset + 2];
 
-                    const first_time = TimeFormat.parse(first) catch {
-                        const second_time = TimeFormat.parse(second) catch {
+                    const first_time = TimeFormat.parse(allocator, first) catch {
+                        const second_time = TimeFormat.parse(allocator, second) catch {
                             std.log.err("Error Creating Schedule - Received two non-times\n", .{});
                             break;
                         };
@@ -90,7 +108,7 @@ const Schedule = struct {
                         });
                         continue;
                     };
-                    const second_time = TimeFormat.parse(second) catch {
+                    const second_time = TimeFormat.parse(allocator, second) catch {
                         try self.list.append(allocator, .{
                             .topic = second,
                             .duration = first_time,
@@ -109,8 +127,11 @@ const Schedule = struct {
         var time_s: u64 = 0; // Fix for this to be accurate to miliseconds not seconds
         const delta: u64 = 1;
         for (self.list.items) |item| {
-            for (0..item.duration.seconds / delta) |i| {
-                try logger.out.print("Waiting for {d} in topic {s}     \r ", .{ item.duration.seconds - i * delta, item.topic });
+            const total_seconds = item.duration.toSeconds();
+            for (0..total_seconds) |i| {
+                try logger.out.print("\rWaiting for {d} in topic {s}     ", .{ total_seconds - i * delta, item.topic });
+                try logger.out.print("\n", .{});
+                try logger.out.print("\x1b[1A", .{});
                 std.Thread.sleep(1 * std.time.ns_per_s);
                 time_s += delta;
             }
