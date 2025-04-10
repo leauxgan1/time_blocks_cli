@@ -2,6 +2,7 @@ var should_exit = false;
 var audio_file = "beep.wav";
 
 // CONSIDER ADDING A MODE THAT REQUIRES CONFIRMATION TO MOVE ON TO THE NEXT TASK
+// EX. --confirm=T/F
 
 const Writer = std.io.GenericWriter(
     std.fs.File,
