@@ -2,7 +2,7 @@ list: std.ArrayListUnmanaged(ScheduleNode),
 timer: u64 = 0,
 prev_time: u64 = 0,
 curr_topic: usize = 0, // Index representing current topic
-break_time: u64 = 0,
+break_time: TimeFormat = .{},
 
 const Schedule = @This();
 const ScheduleNode = struct {
@@ -18,11 +18,6 @@ pub const Status = enum {
 pub fn create(self: *Schedule, allocator: std.mem.Allocator, args: [][]const u8) !void {
     // Time format: HH:MM:SS
     // h - hours, M - minutes, S - seconds
-    std.log.info("Received these args from main: ", .{});
-    for (args) |arg| {
-        std.log.info("{s} ", .{arg});
-    }
-    std.log.info("\n", .{});
     var i: usize = 0;
     while (i < args.len - 1) : (i += 2) { // Continually collect pairs of topics and details, ensuring only one is numeric
         const first = args[i];
@@ -37,10 +32,10 @@ pub fn create(self: *Schedule, allocator: std.mem.Allocator, args: [][]const u8)
                 .topic = first,
                 .duration = second_time,
             });
-            if (self.break_time > 0) {
+            if (self.break_time.toSeconds() > 0 and i < args.len - 2) {
                 try self.list.append(allocator, .{
                     .topic = "Break time...",
-                    .duration = .{ .time = .{ 0, 0, self.break_time } },
+                    .duration = self.break_time,
                 });
             }
             continue;
@@ -50,10 +45,10 @@ pub fn create(self: *Schedule, allocator: std.mem.Allocator, args: [][]const u8)
                 .topic = second,
                 .duration = first_time,
             });
-            if (self.break_time > 0) {
+            if (self.break_time.toSeconds() > 0 and i < args.len - 2) {
                 try self.list.append(allocator, .{
                     .topic = "Break time...",
-                    .duration = .{ .time = .{ 0, 0, self.break_time } },
+                    .duration = self.break_time,
                 });
             }
             continue;
@@ -93,7 +88,7 @@ pub fn step(self: *Schedule, delta: u64, io: IOHandle, audio_player: AudioPlayer
         return .Done;
     }
 }
-pub fn set_break(self: *Schedule, duration: u64) void {
+pub fn set_break(self: *Schedule, duration: TimeFormat) void {
     self.break_time = duration;
 }
 

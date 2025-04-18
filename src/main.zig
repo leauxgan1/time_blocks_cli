@@ -73,8 +73,8 @@ pub fn main() !void {
                 },
                 .@"--break" => {
                     const next = collected_args[idx + 1];
-                    const breakTime = (try TimeFormat.parse(next)).toNanoseconds(); // Handle this err
-                    schedule.set_break(breakTime);
+                    const break_time: TimeFormat = TimeFormat.parse(next) catch .{ .time = .{ 0, 0, 0 } };
+                    schedule.set_break(break_time);
                 },
                 .@"--sound" => {
                     // set sound path to this file
