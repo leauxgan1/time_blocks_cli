@@ -86,8 +86,7 @@ pub fn main() !void {
     try schedule.create(allocator, schedule_nodes);
     defer schedule.list.deinit(allocator);
 
-    var audio_player = try AudioPlayer.init();
-    try audio_player.load(audio_file);
+    var audio_player = try AudioPlayer.init(audio_file);
     defer audio_player.deinit();
 
     var timer = std.time.Timer{
@@ -102,7 +101,7 @@ pub fn main() !void {
         if (should_exit) {
             return;
         } else {
-            const res = try schedule.step(delta, io, audio_player);
+            const res = try schedule.step(delta, io, &audio_player);
             if (res == Schedule.Status.Done) {
                 should_exit = true;
             }
@@ -132,6 +131,7 @@ const Command = enum {
 
 const std = @import("std");
 const utils = @import("utils.zig");
-const AudioPlayer = @import("AudioPlayer.zig");
+// const AudioPlayer = @import("AudioPlayer.zig");
 const Schedule = @import("Schedule.zig");
 const TimeFormat = @import("TimeFormat.zig");
+const AudioPlayer = @import("AudioPlayer.zig");

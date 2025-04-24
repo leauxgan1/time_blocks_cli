@@ -68,7 +68,7 @@ fn getTopicIndex(self: Schedule) ?usize {
     return null;
 }
 
-pub fn step(self: *Schedule, delta: u64, io: IOHandle, audio_player: AudioPlayer) !Status {
+pub fn step(self: *Schedule, delta: u64, io: IOHandle, audio_player: *AudioPlayer) !Status {
     self.timer += delta;
     const current_topic = self.getTopicIndex();
     if (current_topic) |curr_topic| { // Schedule is continuing, print information about current topic
