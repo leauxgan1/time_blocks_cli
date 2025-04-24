@@ -82,18 +82,21 @@ audio_file_path: [*:0]const u8,
 
 pub fn init(file_path: [*:0]const u8) !AudioPlayer {
     var engine: c.ma_engine = undefined;
+
     const engine_config = c.ma_engine_config_init();
     if (c.ma_engine_init(&engine_config, &engine) != c.MA_SUCCESS) {
         std.debug.print("Failed to init audio engine!\n", .{});
         return error.AudioInitializationFailed;
     }
 
-    const self = AudioPlayer{
+    return .{
         .engine = engine,
         .sound = undefined,
         .audio_file_path = file_path,
     };
-    return self;
+}
+pub fn change_audio_file(self: *AudioPlayer, new_audio_file: [*:0]const u8) !void {
+    self.audio_file_path = new_audio_file;
 }
 
 pub fn deinit(self: *AudioPlayer) void {
@@ -101,18 +104,15 @@ pub fn deinit(self: *AudioPlayer) void {
 }
 
 pub fn play(self: *AudioPlayer) void {
-    // Load and play WAV file
+    // Load from file
     if (c.ma_sound_init_from_file(&self.engine, self.audio_file_path, 0, null, null, &self.sound) != c.MA_SUCCESS) {
-        std.debug.print("Failed to load WAV file: {s}\n", .{self.audio_file_path});
-        return;
+        std.debug.panic("Failed to load WAV file: {s}\n", .{self.audio_file_path});
     }
-
-    defer c.ma_sound_uninit(&self.sound); // Cleanup
+    defer c.ma_sound_uninit(&self.sound);
 
     // Start playback
     if (c.ma_sound_start(&self.sound) != c.MA_SUCCESS) {
-        std.debug.print("Failed to play sound!\n", .{});
-        return;
+        std.debug.panic("Failed to play sound!\n", .{});
     }
 
     // Wait until sound finishes (or loop forever if needed)

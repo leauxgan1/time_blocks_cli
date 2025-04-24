@@ -1,5 +1,5 @@
 var should_exit = false;
-var audio_file = "beep.wav";
+var audio_file = "assets/beep.wav";
 
 // CONSIDER ADDING A MODE THAT REQUIRES CONFIRMATION TO MOVE ON TO THE NEXT TASK
 // EX. --confirm=T/F
@@ -19,7 +19,6 @@ const Reader = std.io.GenericReader(
 pub const IOHandle = struct {
     out: Writer,
     err: Writer,
-    // in: Reader,
 };
 
 pub fn main() !void {
@@ -58,7 +57,6 @@ pub fn main() !void {
     };
 
     // Process args
-    //
     var schedule_nodes: [][]const u8 = undefined;
     for (collected_args, 0..) |arg, idx| {
         if (arg[0] == '-' and arg[1] == '-') {
