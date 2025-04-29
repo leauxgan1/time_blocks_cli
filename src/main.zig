@@ -1,5 +1,5 @@
 var should_exit = false;
-var audio_file = "assets/beep.wav";
+const audio_file_default = "assets/beep.wav";
 
 // CONSIDER ADDING A MODE THAT REQUIRES CONFIRMATION TO MOVE ON TO THE NEXT TASK
 // EX. --confirm=T/F
@@ -56,6 +56,8 @@ pub fn main() !void {
         .list = .{},
     };
 
+    var audio_file: [*:0]const u8 = audio_file_default;
+
     // Process args
     var schedule_nodes: [][]const u8 = undefined;
     for (collected_args, 0..) |arg, idx| {
@@ -75,7 +77,8 @@ pub fn main() !void {
                     schedule.set_break(break_time);
                 },
                 .@"--sound" => {
-                    // set sound path to this file
+                    const sound_path = collected_args[idx + 1];
+                    audio_file = @as([*:0]const u8, @ptrCast(sound_path));
                 },
                 else => {},
             }
@@ -84,7 +87,16 @@ pub fn main() !void {
     try schedule.create(allocator, schedule_nodes);
     defer schedule.list.deinit(allocator);
 
-    var audio_player = try AudioPlayer.init(audio_file);
+    var audio_player = AudioPlayer.init(audio_file) catch |err| switch (err) {
+        error.AudioInitializationFailed => {
+            try io.err.print("Audio player failed to initialize, exiting...\n", .{});
+            return;
+        },
+        else => {
+            try io.err.print("Invalid audio file, exiting...\n", .{});
+            return;
+        },
+    };
     defer audio_player.deinit();
 
     var timer = std.time.Timer{
