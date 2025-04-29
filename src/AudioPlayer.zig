@@ -12,7 +12,7 @@ pub fn init(file_path: [*:0]const u8) error{ AudioInitializationFailed, AudioFil
         return error.AudioInitializationFailed;
     }
     if (c.ma_sound_init_from_file(&engine, file_path, 0, null, null, &sound) != c.MA_SUCCESS) {
-        std.debug.panic("Failed to load audio file file: {s}\n", .{file_path});
+        std.debug.print("Failed to load audio file file: {s}\n", .{file_path});
         return error.AudioFileLoadFailed;
     }
 
