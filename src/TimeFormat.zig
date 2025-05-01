@@ -79,11 +79,9 @@ test "Correct conversion of TimeFormat" {
         .time = .{ 3, 5, 11 },
     };
     try std.testing.expectEqual(myFormat.toSeconds(), 11111);
-    // std.debug.assert(myFormat.toNanoseconds() == 300000000000);
 }
 test "Parsing time format from string" {
     const myFormat: TimeFormat = try TimeFormat.parse("03:05:11");
-    std.log.debug("format parsed: {any}\n", .{myFormat});
     const expected = TimeFormat{
         .time = .{ 3, 5, 11 },
     };

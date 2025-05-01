@@ -73,18 +73,18 @@ pub fn step(self: *Schedule, delta: u64, io: IOHandle, audio_player: *AudioPlaye
     const current_topic = self.getTopicIndex();
     if (current_topic) |curr_topic| { // Schedule is continuing, print information about current topic
         if (curr_topic == self.curr_topic + 1) { // Found just entered new topic
-            audio_player.play();
+            try audio_player.play();
             self.curr_topic = curr_topic;
             self.prev_time += self.timer;
             self.timer = 0;
         }
         const current_schedule_item = self.list.items[curr_topic];
         const time_remaining = current_schedule_item.duration.toSeconds() - self.timer / std.time.ns_per_s;
-        try io.out.print("\rWaiting in topic {s} for {d} seconds        ", .{ current_schedule_item.topic, time_remaining });
+        io.out.print("\rWaiting in topic {s} for {d} seconds        ", .{ current_schedule_item.topic, time_remaining });
         return .InProgress;
     } else { // Schedule is over, print ending message
-        try io.out.print("\rFinished time blocks : >                    \n", .{});
-        audio_player.play();
+        io.out.print("\rFinished time blocks : >                    \n", .{});
+        try audio_player.play();
         return .Done;
     }
 }

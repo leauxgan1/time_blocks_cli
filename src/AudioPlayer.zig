@@ -1,44 +1,41 @@
 engine: c.ma_engine,
 sound: c.ma_sound,
-audio_file_path: [*:0]const u8,
+io: *IOHandle,
 
-pub fn init(file_path: [*:0]const u8) error{ AudioInitializationFailed, AudioFileLoadFailed }!AudioPlayer {
+pub fn init(io: *IOHandle) !AudioPlayer {
     var engine: c.ma_engine = undefined;
-    var sound: c.ma_sound = undefined;
 
     const engine_config = c.ma_engine_config_init();
     if (c.ma_engine_init(&engine_config, &engine) != c.MA_SUCCESS) {
-        std.debug.print("Failed to init audio engine!\n", .{});
+        io.err.print("Failed to init audio engine!\n", .{});
         return error.AudioInitializationFailed;
-    }
-    if (c.ma_sound_init_from_file(&engine, file_path, 0, null, null, &sound) != c.MA_SUCCESS) {
-        std.debug.print("Failed to load audio file file: {s}\n", .{file_path});
-        return error.AudioFileLoadFailed;
     }
 
     return .{
         .engine = engine,
-        .sound = sound,
-        .audio_file_path = file_path,
+        .sound = undefined,
+        .io = io,
     };
-}
-pub fn change_audio_file(self: *AudioPlayer, new_audio_file: [*:0]const u8) !void {
-    self.audio_file_path = new_audio_file;
 }
 
 pub fn deinit(self: *AudioPlayer) void {
+    c.ma_sound_uninit(&self.sound);
     c.ma_engine_uninit(&self.engine);
 }
 
-pub fn play(self: *AudioPlayer) void {
+pub fn loadSound(self: *AudioPlayer, file_path: [*:0]const u8) !void {
     // Load from file
-    if (c.ma_sound_init_from_file(&self.engine, self.audio_file_path, 0, null, null, &self.sound) != c.MA_SUCCESS) {
-        std.debug.panic("Failed to load WAV file: {s}\n", .{self.audio_file_path});
+    if (c.ma_sound_init_from_file(&self.engine, file_path, 0, null, null, &self.sound) != c.MA_SUCCESS) {
+        self.io.err.print("Failed to load WAV file: {s}\n", .{file_path});
+        return error.LoadSoundFailed;
     }
-    defer c.ma_sound_uninit(&self.sound);
+}
+
+pub fn play(self: *AudioPlayer) !void {
     // Start playback
     if (c.ma_sound_start(&self.sound) != c.MA_SUCCESS) {
-        std.debug.panic("Failed to play sound!\n", .{});
+        self.io.err.print("Failed to play sound!\n", .{});
+        return error.SoundStartFailed;
     }
     // Wait until sound finishes (or loop forever if needed)
     while (c.ma_sound_is_playing(&self.sound) != 0) {
@@ -51,3 +48,4 @@ const c = @cImport({
     @cInclude("miniaudio.h");
 });
 const AudioPlayer = @This();
+const IOHandle = @import("main.zig").IOHandle;

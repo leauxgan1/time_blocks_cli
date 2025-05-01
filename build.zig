@@ -4,7 +4,7 @@ pub fn build(b: *std.Build) void {
     // const optimize = b.standardOptimizeOption(.{});
 
     const exe = b.addExecutable(.{
-        .name = "time_blocks_cli",
+        .name = "tblocks",
         .root_source_file = .{ .src_path = .{
             .owner = b,
             .sub_path = "src/main.zig",
