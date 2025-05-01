@@ -18,3 +18,14 @@ tblocks --set [topic,duration]... --break [break_time] --sound [path_to_sound_fi
         - Supports audio files of the .wav, .mp3, and .ogg format
   --help: Print this menu
 
+## How to build
+
+If you are using nix and nix flakes, you can get a development shell with the proper zig version by running 
+> nix develop
+This is done most easily using determinate systems's nix installer (https://github.com/DeterminateSystems/nix-installer).
+
+Otherwise, install zig version 0.14 from the https://ziglang.org/download/
+
+Then, run zig build in the directory containing build.zig, and the executable will be populated in zig_out/bin/tblocks
+From there, the executable can be symlinked or aliased to be used elsewhere on your machine.
+

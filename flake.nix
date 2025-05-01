@@ -13,7 +13,6 @@
       devShells.default = pkgs.mkShell {
         packages = [ 
 					pkgs.zig
-					pkgs.SDL2
 				];
         
         # Optional: Environment variables
