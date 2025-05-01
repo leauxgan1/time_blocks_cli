@@ -2,7 +2,7 @@ file: std.fs.File,
 
 pub fn writeAll(self: PanicWriter, bytes: []const u8) error{}!void {
     self.file.writeAll(bytes) catch |err| {
-        std.debug.panic("write failed: {s}", .{@errorName(err)});
+        std.process.fatal("write failed: {s}", .{@errorName(err)});
     };
 }
 pub fn writeBytesNTimes(self: PanicWriter, bytes: []const u8, n: usize) error{}!void {
@@ -14,7 +14,7 @@ pub fn writeBytesNTimes(self: PanicWriter, bytes: []const u8, n: usize) error{}!
 
 pub fn print(self: PanicWriter, comptime format: []const u8, args: anytype) void {
     std.fmt.format(self, format, args) catch |err| {
-        std.debug.panic("fmt failed: {s}", .{@errorName(err)});
+        std.process.fatal("fmt failed: {s}", .{@errorName(err)});
     };
 }
 

@@ -43,6 +43,14 @@ pub fn play(self: *AudioPlayer) !void {
     }
 }
 
+test "AudioPlayer init on existing file" {
+    const stdout = std.io.getStdOut();
+    const stderr = std.io.getStdErr();
+    const io = IOHandle{ .out = .{ .file = stdout }, .err = .{ .file = stderr } };
+    const player = AudioPlayer.init(io);
+    player.loadSound("./assets/beep.wav");
+}
+
 const std = @import("std");
 const c = @cImport({
     @cInclude("miniaudio.h");

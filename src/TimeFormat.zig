@@ -1,6 +1,7 @@
 time: @Vector(3, u64) = .{ 0, 0, 0 }, // Organized as hours,minutes,and then seconds
 
 const TimeFormat = @This();
+
 /// Input must consist of only numbers and colon symbols
 /// Any other symbols invalidate this parsing step and result in an error
 pub fn parse(s: []const u8) !TimeFormat {

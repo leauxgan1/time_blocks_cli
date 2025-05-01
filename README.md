@@ -6,18 +6,9 @@
 
 ## How to use
 > Available Commands:
- - time-blocks {time/topic} {time/topic} ... --break={time}
-    - Set and start a schedule of time blocks, where each pair of arguments contains a topic and a formatted duration
-        - Duration format is as follows: HH:MM:SS for hours, minutes, and seconds.
-    - When the schedule finishes, the program ends.
-    --break={time}: Set a break time between each time-block, ex. --break=5:00
- - time-blocks set {time/topic} {time/topic} ... --break={time}
-    - Set a new schedule and await a further command
-    --break={time}: Set a break time between each time-block, ex. --break=5:00
- - time-blocks start --break={time}
-    - Use the most recently set schedule and exit when it finishes
-    --break={time}: Set a break time between each time-block, ex. --break=5:00
- - time-blocks audio {file_path}
-    - Set a path to a valid audio file to be played at the end of each time block
-    - Valid audio file formats are:
-        mp3, wav, and ogg
+    tblocks --set [topic,duration]... --break [break_time] --sound [path_to_sound_file]\n
+      --set: Initialize a schedule with a list of pairs of topic and durations (HH:MM:SS) in the order in which they should be prioritized 
+      --break: Set a break time (HH:MM:SS) between each task
+      --sound: Set an alternate sound via a path to play as a notification for the end of each task
+            - Supports audio files of the .wav, .mp3, and .ogg format
+      --help: Print this menu
