@@ -86,9 +86,9 @@ test "Parsing time format from string" {
     const expected = TimeFormat{
         .time = .{ 3, 5, 11 },
     };
-    try std.testing.expectEqual(expected.hours, myFormat.hours);
-    try std.testing.expectEqual(expected.minutes, myFormat.minutes);
-    try std.testing.expectEqual(expected.seconds, myFormat.seconds);
+    try std.testing.expectEqual(expected.time[0], myFormat.time[0]);
+    try std.testing.expectEqual(expected.time[1], myFormat.time[1]);
+    try std.testing.expectEqual(expected.time[2], myFormat.time[2]);
 }
 
 const std = @import("std");

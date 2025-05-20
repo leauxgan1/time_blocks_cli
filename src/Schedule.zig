@@ -3,6 +3,8 @@ timer: u64 = 0,
 prev_time: u64 = 0,
 curr_topic: usize = 0, // Index representing current topic
 break_time: TimeFormat = .{},
+resolution: usize = DEFAULT_RESOLUTION,
+const DEFAULT_RESOLUTION: usize = 50;
 
 const Schedule = @This();
 const ScheduleNode = struct {
@@ -68,28 +70,73 @@ fn getTopicIndex(self: Schedule) ?usize {
     return null;
 }
 
+fn printProgressBar(io: IOHandle, current_time: u64, end_time: u64, len: usize) void {
+    // Creates a string of size len that is filled with █ and ▒ characters to signify how close the time block is to completion
+    const filled_ratio = @as(f64, @floatFromInt(current_time)) / @as(f64, @floatFromInt(end_time)); // 10 / 100 -> 0.1
+    const num_filled = @as(usize, @intFromFloat(filled_ratio * @as(f64, @floatFromInt(len)))); // 0.1 * 10 = 1
+    for (0..num_filled) |_| {
+        io.out.print("█", .{});
+    }
+    for (num_filled..len) |_| {
+        io.out.print("▒", .{});
+    }
+    io.out.print("\n", .{});
+}
+
 pub fn step(self: *Schedule, delta: u64, io: IOHandle, audio_player: *AudioPlayer) !Status {
     self.timer += delta;
     const current_topic = self.getTopicIndex();
     if (current_topic) |curr_topic| { // Schedule is continuing, print information about current topic
         if (curr_topic == self.curr_topic + 1) { // Found just entered new topic
+            io.out.print("\n", .{});
+            printProgressBar(io, 1, 1, self.resolution);
+            io.out.print("\x1b[2A", .{});
             try audio_player.play();
             self.curr_topic = curr_topic;
             self.prev_time += self.timer;
             self.timer = 0;
         }
         const current_schedule_item = self.list.items[curr_topic];
-        const time_remaining = current_schedule_item.duration.toSeconds() - self.timer / std.time.ns_per_s;
-        io.out.print("\rWaiting in topic {s} for {d} seconds        ", .{ current_schedule_item.topic, time_remaining });
+        const time_total = current_schedule_item.duration.toSeconds();
+        const time_remaining = time_total - self.timer / std.time.ns_per_s;
+        io.out.print("Waiting in topic {s} for {d} seconds        \n", .{ current_schedule_item.topic, time_remaining });
+        printProgressBar(io, self.timer / std.time.ns_per_s, time_total, self.resolution);
+        io.out.print("\x1b[2A", .{});
         return .InProgress;
     } else { // Schedule is over, print ending message
-        io.out.print("\rFinished time blocks : >                    \n", .{});
+        io.out.print("Finished time blocks : >                    \n", .{});
+        printProgressBar(io, 1, 1, self.resolution);
+        io.out.print("\x1b[2A", .{});
         try audio_player.play();
         return .Done;
     }
 }
 pub fn set_break(self: *Schedule, duration: TimeFormat) void {
     self.break_time = duration;
+}
+
+test "Formatting of progress bar" {
+    const allocator = std.testing.allocator;
+    var s: Schedule = .{ .list = .{} };
+    defer s.list.deinit(allocator);
+    const stdout = std.io.getStdOut();
+    const err_file = std.io.getStdErr();
+
+    const io = IOHandle{
+        .out = .{ .file = stdout },
+        .err = .{ .file = err_file },
+    };
+
+    var args: [4][]const u8 = .{
+        "Workout",
+        "15",
+        "30",
+        "Study",
+    };
+
+    try s.create(allocator, &args);
+    std.debug.print("Creating a half completed progress bar: \n", .{});
+    printProgressBar(io, 5, 10, 20);
 }
 
 const std = @import("std");
