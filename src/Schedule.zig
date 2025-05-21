@@ -86,11 +86,12 @@ fn printProgressBar(io: IOHandle, current_time: u64, end_time: u64, len: usize) 
 pub fn step(self: *Schedule, delta: u64, io: IOHandle, audio_player: *AudioPlayer) !Status {
     self.timer += delta;
     const current_topic = self.getTopicIndex();
+    defer io.out.print("\x1b[2A", .{}); // Reset cursor after printing
     if (current_topic) |curr_topic| { // Schedule is continuing, print information about current topic
-        if (curr_topic == self.curr_topic + 1) { // Found just entered new topic
+        if (curr_topic == self.curr_topic + 1) { // Just entered new topic
             io.out.print("\n", .{});
             printProgressBar(io, 1, 1, self.resolution);
-            io.out.print("\x1b[2A", .{});
+            io.out.print("\x1b[2A", .{}); // Reset cursor after printing
             try audio_player.play();
             self.curr_topic = curr_topic;
             self.prev_time += self.timer;
@@ -101,12 +102,10 @@ pub fn step(self: *Schedule, delta: u64, io: IOHandle, audio_player: *AudioPlaye
         const time_remaining = time_total - self.timer / std.time.ns_per_s;
         io.out.print("Waiting in topic {s} for {d} seconds        \n", .{ current_schedule_item.topic, time_remaining });
         printProgressBar(io, self.timer / std.time.ns_per_s, time_total, self.resolution);
-        io.out.print("\x1b[2A", .{});
         return .InProgress;
     } else { // Schedule is over, print ending message
         io.out.print("Finished time blocks : >                    \n", .{});
         printProgressBar(io, 1, 1, self.resolution);
-        io.out.print("\x1b[2A", .{});
         try audio_player.play();
         return .Done;
     }

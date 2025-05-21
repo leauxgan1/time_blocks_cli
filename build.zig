@@ -1,8 +1,6 @@
 const std = @import("std");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
-    // const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
-
     const exe = b.addExecutable(.{
         .name = "tblocks",
         .root_source_file = .{ .src_path = .{
@@ -10,7 +8,7 @@ pub fn build(b: *std.Build) void {
             .sub_path = "src/main.zig",
         } },
         .target = target,
-        .optimize = .ReleaseFast,
+        .optimize = .ReleaseSmall,
     });
     exe.addCSourceFile(.{
         .file = .{ .src_path = .{ .owner = b, .sub_path = "include/miniaudio.c" } },
