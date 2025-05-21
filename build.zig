@@ -8,7 +8,7 @@ pub fn build(b: *std.Build) void {
             .sub_path = "src/main.zig",
         } },
         .target = target,
-        .optimize = .ReleaseSmall,
+        .optimize = .ReleaseSafe,
     });
     exe.addCSourceFile(.{
         .file = .{ .src_path = .{ .owner = b, .sub_path = "include/miniaudio.c" } },
