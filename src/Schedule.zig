@@ -2,9 +2,10 @@ list: std.ArrayListUnmanaged(ScheduleNode),
 timer: u64 = 0,
 prev_time: u64 = 0,
 curr_topic: usize = 0, // Index representing current topic
-break_time: TimeFormat = .{},
-resolution: usize = DEFAULT_RESOLUTION,
-const DEFAULT_RESOLUTION: usize = 50;
+progress_size: usize = DEFAULT_PROGRESS_SIZE,
+options: ScheduleOptions = .{},
+
+const DEFAULT_PROGRESS_SIZE = 50;
 
 const Schedule = @This();
 const ScheduleNode = struct {
@@ -12,9 +13,22 @@ const ScheduleNode = struct {
     duration: TimeFormat,
 };
 
+const ScheduleOptions = struct {
+    break_time: TimeFormat = .{},
+    repeating: RepeatingState = .NonRepeating,
+    paused: bool = false,
+};
+
+const RepeatingState = union(enum) {
+    NonRepeating,
+    ReapeatingInfinitely,
+    RepeatingCount: u32,
+};
+
 pub const Status = enum {
     InProgress,
     Done,
+    Paused,
 };
 
 pub fn create(self: *Schedule, allocator: std.mem.Allocator, args: [][]const u8) !void {
@@ -34,10 +48,10 @@ pub fn create(self: *Schedule, allocator: std.mem.Allocator, args: [][]const u8)
                 .topic = first,
                 .duration = second_time,
             });
-            if (self.break_time.toSeconds() > 0 and i < args.len - 2) {
+            if (self.options.break_time.toSeconds() > 0 and i < args.len - 2) {
                 try self.list.append(allocator, .{
-                    .topic = "Break time...",
-                    .duration = self.break_time,
+                    .topic = "Break time! Get some tea or coffee",
+                    .duration = self.options.break_time,
                 });
             }
             continue;
@@ -47,10 +61,10 @@ pub fn create(self: *Schedule, allocator: std.mem.Allocator, args: [][]const u8)
                 .topic = second,
                 .duration = first_time,
             });
-            if (self.break_time.toSeconds() > 0 and i < args.len - 2) {
+            if (self.options.break_time.toSeconds() > 0 and i < args.len - 2) {
                 try self.list.append(allocator, .{
                     .topic = "Break time...",
-                    .duration = self.break_time,
+                    .duration = self.options.break_time,
                 });
             }
             continue;
@@ -70,7 +84,7 @@ fn getTopicIndex(self: Schedule) ?usize {
     return null;
 }
 
-fn printProgressBar(io: IOHandle, current_time: u64, end_time: u64, len: usize) void {
+fn printProgressBar(io: *IOHandle, current_time: u64, end_time: u64, len: usize) void {
     // Creates a string of size len that is filled with █ and ▒ characters to signify how close the time block is to completion
     const filled_ratio = @as(f64, @floatFromInt(current_time)) / @as(f64, @floatFromInt(end_time)); // 10 / 100 -> 0.1
     const num_filled = @as(usize, @intFromFloat(filled_ratio * @as(f64, @floatFromInt(len)))); // 0.1 * 10 = 1
@@ -83,14 +97,17 @@ fn printProgressBar(io: IOHandle, current_time: u64, end_time: u64, len: usize) 
     io.out.print("\n", .{});
 }
 
-pub fn step(self: *Schedule, delta: u64, io: IOHandle, audio_player: *AudioPlayer) !Status {
+pub fn step(self: *Schedule, delta: u64, io: *IOHandle, audio_player: *AudioPlayer) !Status {
+    if (self.options.paused) {
+        return .InProgress;
+    }
     self.timer += delta;
     const current_topic = self.getTopicIndex();
     defer io.out.print("\x1b[2A", .{}); // Reset cursor after printing
     if (current_topic) |curr_topic| { // Schedule is continuing, print information about current topic
         if (curr_topic == self.curr_topic + 1) { // Just entered new topic
             io.out.print("\n", .{});
-            printProgressBar(io, 1, 1, self.resolution);
+            printProgressBar(io, 1, 1, self.progress_size);
             io.out.print("\x1b[2A", .{}); // Reset cursor after printing
             try audio_player.play();
             self.curr_topic = curr_topic;
@@ -100,18 +117,58 @@ pub fn step(self: *Schedule, delta: u64, io: IOHandle, audio_player: *AudioPlaye
         const current_schedule_item = self.list.items[curr_topic];
         const time_total = current_schedule_item.duration.toSeconds();
         const time_remaining = time_total - self.timer / std.time.ns_per_s;
-        io.out.print("Waiting in topic {s} for {d} seconds        \n", .{ current_schedule_item.topic, time_remaining });
-        printProgressBar(io, self.timer / std.time.ns_per_s, time_total, self.resolution);
+        io.out.printBuffer("Waiting in topic {s} for {d}... (CTRL+Z to pause)", .{ current_schedule_item.topic, time_remaining });
+        io.out.print("\n", .{});
+        printProgressBar(io, self.timer / std.time.ns_per_s, time_total, self.progress_size);
         return .InProgress;
     } else { // Schedule is over, print ending message
-        io.out.print("Finished time blocks : >                    \n", .{});
-        printProgressBar(io, 1, 1, self.resolution);
-        try audio_player.play();
-        return .Done;
+        switch (self.options.repeating) {
+            .ReapeatingInfinitely => {
+                self.resetSchedule();
+                io.out.printBuffer("Repeating schedule infinitely...", .{});
+                io.out.print("\n", .{});
+                printProgressBar(io, 1, 1, self.progress_size);
+                try audio_player.play();
+                return .InProgress;
+            },
+            .RepeatingCount => {
+                self.resetSchedule();
+                self.options.repeating.RepeatingCount -= 1;
+                io.out.printBuffer("Repeating schedule {d} more times...     ", .{self.options.repeating.RepeatingCount});
+                io.out.print("\n", .{});
+                printProgressBar(io, 1, 1, self.progress_size);
+                try audio_player.play();
+                return .InProgress;
+            },
+            .NonRepeating => {
+                io.out.printBuffer("Finished time blocks : >", .{});
+                io.out.print("\n", .{});
+                printProgressBar(io, 1, 1, self.progress_size);
+                try audio_player.play();
+                return .Done;
+            },
+        }
     }
 }
-pub fn set_break(self: *Schedule, duration: TimeFormat) void {
-    self.break_time = duration;
+pub fn setBreak(self: *Schedule, duration: TimeFormat) void {
+    self.options.break_time = duration;
+}
+pub fn setRepetitions(self: *Schedule, repetitions: ?u32) void {
+    if (repetitions) |r| {
+        self.options.repeating = .{ .RepeatingCount = r };
+    } else {
+        self.options.repeating = .ReapeatingInfinitely;
+    }
+}
+
+pub fn setPaused(self: *Schedule, is_paused: bool) void {
+    self.options.paused = is_paused;
+}
+
+fn resetSchedule(self: *Schedule) void {
+    self.timer = 0;
+    self.prev_time = 0;
+    self.curr_topic = 0;
 }
 
 test "Formatting of progress bar" {
@@ -139,6 +196,9 @@ test "Formatting of progress bar" {
 }
 
 const std = @import("std");
+const PanicWriter = @import("PanicWriter.zig");
 const TimeFormat = @import("TimeFormat.zig");
 const AudioPlayer = @import("AudioPlayer.zig");
 const IOHandle = @import("main.zig").IOHandle;
+const output_formatter = @import("main.zig").center_format_string;
+const output_width = @import("main.zig").output_buffer_size;
