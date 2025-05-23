@@ -103,12 +103,14 @@ pub fn step(self: *Schedule, delta: u64, io: *IOHandle, audio_player: *AudioPlay
     }
     self.timer += delta;
     const current_topic = self.getTopicIndex();
-    defer io.out.print("\x1b[2A", .{}); // Reset cursor after printing
     if (current_topic) |curr_topic| { // Schedule is continuing, print information about current topic
         if (curr_topic == self.curr_topic + 1) { // Just entered new topic
+            io.out.printBuffer("Waiting in topic {s} for 0... (CTRL+Z to pause)", .{self.list.items[curr_topic - 1].topic});
             io.out.print("\n", .{});
             printProgressBar(io, 0, 1, self.progress_size);
+
             io.out.print("\x1b[2A", .{}); // Reset cursor after printing
+
             try audio_player.play();
             self.curr_topic = curr_topic;
             self.prev_time += self.timer;
@@ -120,6 +122,7 @@ pub fn step(self: *Schedule, delta: u64, io: *IOHandle, audio_player: *AudioPlay
         io.out.printBuffer("Waiting in topic {s} for {d}... (CTRL+Z to pause)", .{ current_schedule_item.topic, time_remaining });
         io.out.print("\n", .{});
         printProgressBar(io, self.timer / std.time.ns_per_s, time_total, self.progress_size);
+        io.out.print("\x1b[2A", .{}); // Reset cursor after printing
         return .InProgress;
     } else { // Schedule is over, print ending message
         repeat: switch (self.options.repeating) {
@@ -128,6 +131,7 @@ pub fn step(self: *Schedule, delta: u64, io: *IOHandle, audio_player: *AudioPlay
                 io.out.printBuffer("Repeating schedule infinitely...", .{});
                 io.out.print("\n", .{});
                 printProgressBar(io, 1, 1, self.progress_size);
+                io.out.print("\x1b[2A", .{}); // Reset cursor after printing
                 try audio_player.play();
                 return .InProgress;
             },
@@ -140,6 +144,7 @@ pub fn step(self: *Schedule, delta: u64, io: *IOHandle, audio_player: *AudioPlay
                 io.out.printBuffer("Repeating schedule {d} more times...     ", .{self.options.repeating.RepeatingCount});
                 io.out.print("\n", .{});
                 printProgressBar(io, 1, 1, self.progress_size);
+                io.out.print("\x1b[2A", .{}); // Reset cursor after printing
                 try audio_player.play();
                 return .InProgress;
             },

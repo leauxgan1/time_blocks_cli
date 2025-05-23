@@ -139,10 +139,6 @@ pub fn main() !void {
     try audio_player.loadSound(audio_file);
     defer audio_player.deinit();
 
-    var timer = std.time.Timer{
-        .previous = try std.time.Instant.now(),
-        .started = try std.time.Instant.now(),
-    };
     // Event loop
     while (true) {
         if (should_exit) {
@@ -152,7 +148,6 @@ pub fn main() !void {
             if (!paused) {
                 schedule.setPaused(false);
                 std.io.getStdOut().writer().print("\x1B[0GUnpaused!                                             \x1B[0G", .{}) catch unreachable;
-                _ = timer.lap();
             }
         } else {
             std.Thread.sleep(std.time.ns_per_s);
