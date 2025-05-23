@@ -156,7 +156,7 @@ pub fn main() !void {
             }
         } else {
             std.Thread.sleep(std.time.ns_per_s);
-            const delta = timer.lap();
+            const delta = std.time.ns_per_s * 1;
             if (paused) {
                 schedule.setPaused(true);
                 continue;

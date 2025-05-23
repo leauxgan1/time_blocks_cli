@@ -107,7 +107,7 @@ pub fn step(self: *Schedule, delta: u64, io: *IOHandle, audio_player: *AudioPlay
     if (current_topic) |curr_topic| { // Schedule is continuing, print information about current topic
         if (curr_topic == self.curr_topic + 1) { // Just entered new topic
             io.out.print("\n", .{});
-            printProgressBar(io, 1, 1, self.progress_size);
+            printProgressBar(io, 0, 1, self.progress_size);
             io.out.print("\x1b[2A", .{}); // Reset cursor after printing
             try audio_player.play();
             self.curr_topic = curr_topic;
@@ -122,7 +122,7 @@ pub fn step(self: *Schedule, delta: u64, io: *IOHandle, audio_player: *AudioPlay
         printProgressBar(io, self.timer / std.time.ns_per_s, time_total, self.progress_size);
         return .InProgress;
     } else { // Schedule is over, print ending message
-        switch (self.options.repeating) {
+        repeat: switch (self.options.repeating) {
             .ReapeatingInfinitely => {
                 self.resetSchedule();
                 io.out.printBuffer("Repeating schedule infinitely...", .{});
@@ -134,6 +134,9 @@ pub fn step(self: *Schedule, delta: u64, io: *IOHandle, audio_player: *AudioPlay
             .RepeatingCount => {
                 self.resetSchedule();
                 self.options.repeating.RepeatingCount -= 1;
+                if (self.options.repeating.RepeatingCount < 1) {
+                    continue :repeat .NonRepeating;
+                }
                 io.out.printBuffer("Repeating schedule {d} more times...     ", .{self.options.repeating.RepeatingCount});
                 io.out.print("\n", .{});
                 printProgressBar(io, 1, 1, self.progress_size);
